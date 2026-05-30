@@ -1,0 +1,73 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'Helm/**'  
+
+
+jobs:
+
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Set up Go
+          uses: actions/setup-go@v2
+          with:
+            go-version: '1.22.5'
+
+        - name: Build the application
+          run: go build -o go-web-app
+
+        - name: test the application
+          run: go test ./...
+          
+    code-quality:
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Set up Go
+          uses: actions/setup-go@v2
+          with:
+            go-version: '1.22.5'
+
+        - name: Install golint
+          uses: golangci/golangci-lint-action@v3
+          with:
+            version: v1.56.2
+
+        - name: Run golint
+          run: golangci-lint run ./...      
+
+    push Docker image:
+        runs-on: ubuntu-latest
+        needs: [build, code-quality]
+
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Log in to Docker Hub
+          uses: docker/login-action@v2
+          with:
+            username: ${{ vars.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_PASSWORD }}
+
+        - name: Build and push Docker image
+          uses: docker/build-push-action@v3
+          with:
+            context: .
+            push: true
+            tags: ritesh2828/go-web-app:v3
+    
+
